@@ -58,6 +58,7 @@ export class FakePool extends EventEmitter {
   }
 
   release() {
+    if (this.#inUse <= 0) throw new Error("release without acquire");
     this.#inUse--;
     this.#drain();
   }

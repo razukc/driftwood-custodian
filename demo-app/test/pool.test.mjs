@@ -60,6 +60,12 @@ test("shrinking does not revoke held slots; stays full until below new size", as
   await assert.rejects(pool.acquire(), PoolTimeoutError);
 });
 
+test("release without a held slot throws instead of corrupting capacity", () => {
+  const pool = new FakePool({ size: 1 });
+  assert.throws(() => pool.release(), { message: "release without acquire" });
+  assert.equal(pool.inUse, 0);
+});
+
 test("no slot leak across many timeouts", async () => {
   const pool = new FakePool({ size: 1, timeoutMs: 10 });
   await pool.acquire();
