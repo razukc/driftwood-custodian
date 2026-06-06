@@ -1,0 +1,4 @@
+node_modules/
+.env
+DEVPOST_NOTES.md
+.local/

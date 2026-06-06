@@ -1,0 +1,66 @@
+{
+  "argv": [
+    "--rm",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--read-only",
+    "--tmpfs",
+    "/tmp",
+    "--volume",
+    "/app:/app:ro",
+    "--env",
+    "DT_ENVIRONMENT",
+    "--env",
+    "DT_GRAIL_QUERY_BUDGET_GB",
+    "--env",
+    "DT_PLATFORM_TOKEN",
+    "--env",
+    "SLACK_CONNECTION_ID"
+  ],
+  "egress": [
+    {
+      "host": "egc32068.apps.dynatrace.com",
+      "port": 443,
+      "blockPrivate": true
+    },
+    {
+      "host": "sso.dynatrace.com",
+      "port": 443,
+      "blockPrivate": true
+    }
+  ],
+  "envInjections": [
+    "DT_ENVIRONMENT",
+    "DT_GRAIL_QUERY_BUDGET_GB",
+    "DT_PLATFORM_TOKEN",
+    "SLACK_CONNECTION_ID"
+  ],
+  "assertions": [
+    {
+      "id": "dynatrace.budget_self_reset",
+      "description": "the budget guarding execute_dql can be reset by the same principal it constrains"
+    },
+    {
+      "id": "dynatrace.email_recipients_unbounded",
+      "description": "recipient list is chosen by tool arguments; this is data egress inside the allowed tenant endpoint and is invisible to the OS-level sandbox"
+    },
+    {
+      "id": "dynatrace.grail_budget",
+      "description": "per-session Grail scan volume is capped by DT_GRAIL_QUERY_BUDGET_GB inside the server, not by the sandbox"
+    },
+    {
+      "id": "dynatrace.slack_recipients_unbounded",
+      "description": "message destination is chosen by tool arguments, not by the sandbox; egress is tenant-mediated and cannot be constrained at the OS level"
+    },
+    {
+      "id": "dynatrace.workflow_persists",
+      "description": "creates a persistent workflow in the tenant that runs after the sandbox exits"
+    }
+  ],
+  "notes": [
+    "net: 2 endpoint(s) declared — host MUST attach the container to a network whose egress honors egress[]; do NOT use --network host",
+    "fs: \"/app/**\" lowered to volume mount \"/app\" — Docker mounts directories, not globs. Fine-grained glob enforcement is the server's job."
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "name": "@dynatrace-oss/dynatrace-mcp-server",
+  "version": "1.8.6",
+  "grammar": "0.0",
+  "serverCapabilities": [
+    "net:connect:egc32068.apps.dynatrace.com:443",
+    "net:connect:sso.dynatrace.com:443",
+    "env:inject:DT_ENVIRONMENT",
+    "env:inject:DT_PLATFORM_TOKEN",
+    "env:read:DT_GRAIL_QUERY_BUDGET_GB",
+    "fs:read:/app/**"
+  ],
+  "tools": [
+    {
+      "name": "get_environment_info",
+      "description": "Get information about the connected Dynatrace environment",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "list_vulnerabilities",
+      "description": "List security vulnerabilities detected by Dynatrace",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "list_problems",
+      "description": "List problems detected by Davis AI",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "find_entity_by_name",
+      "description": "Find a monitored entity (service, host, process group) by name",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "send_slack_message",
+      "description": "Send a Slack message via a Dynatrace AppEngine Slack connection",
+      "capabilities": [
+        "net:connect:egc32068.apps.dynatrace.com:443",
+        "env:inject:SLACK_CONNECTION_ID",
+        "assert:dynatrace.slack_recipients_unbounded:\"message destination is chosen by tool arguments, not by the sandbox; egress is tenant-mediated and cannot be constrained at the OS level\""
+      ]
+    },
+    {
+      "name": "verify_dql",
+      "description": "Verify a DQL statement without executing it",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "execute_dql",
+      "description": "Execute a DQL query against Grail",
+      "capabilities": [
+        "net:connect:egc32068.apps.dynatrace.com:443",
+        "assert:dynatrace.grail_budget:\"per-session Grail scan volume is capped by DT_GRAIL_QUERY_BUDGET_GB inside the server, not by the sandbox\""
+      ]
+    },
+    {
+      "name": "generate_dql_from_natural_language",
+      "description": "Generate a DQL statement from natural language via Davis CoPilot",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "explain_dql_in_natural_language",
+      "description": "Explain a DQL statement in natural language via Davis CoPilot",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "chat_with_davis_copilot",
+      "description": "Ask Davis CoPilot a question about the environment",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "create_workflow_for_notification",
+      "description": "Create an AutomationEngine workflow that sends a notification",
+      "capabilities": [
+        "net:connect:egc32068.apps.dynatrace.com:443",
+        "assert:dynatrace.workflow_persists:\"creates a persistent workflow in the tenant that runs after the sandbox exits\""
+      ]
+    },
+    {
+      "name": "make_workflow_public",
+      "description": "Change a workflow's visibility to public",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "get_kubernetes_events",
+      "description": "Fetch Kubernetes cluster events from Grail",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "reset_grail_budget",
+      "description": "Reset the session Grail query budget counter",
+      "capabilities": [
+        "assert:dynatrace.budget_self_reset:\"the budget guarding execute_dql can be reset by the same principal it constrains\""
+      ]
+    },
+    {
+      "name": "send_email",
+      "description": "Send an email via the Dynatrace Email API",
+      "capabilities": [
+        "net:connect:egc32068.apps.dynatrace.com:443",
+        "assert:dynatrace.email_recipients_unbounded:\"recipient list is chosen by tool arguments; this is data egress inside the allowed tenant endpoint and is invisible to the OS-level sandbox\""
+      ]
+    },
+    {
+      "name": "send_event",
+      "description": "Send an event (e.g. deployment marker) to the tenant",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "list_exceptions",
+      "description": "List exception groups from monitored services",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "list_davis_analyzers",
+      "description": "List available Davis analyzers",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "execute_davis_analyzer",
+      "description": "Execute a Davis analyzer (e.g. forecast, anomaly detection)",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    },
+    {
+      "name": "create_dynatrace_notebook",
+      "description": "Create a notebook document in the tenant",
+      "capabilities": ["net:connect:egc32068.apps.dynatrace.com:443"]
+    }
+  ]
+}
