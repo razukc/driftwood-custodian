@@ -18,6 +18,12 @@ let provider = null;
 let otelLogger = null;
 
 if (process.env.OTLP_DISABLED !== "1") {
+  if (!process.env.DT_OTLP_ENDPOINT || !process.env.DT_API_TOKEN) {
+    throw new Error(
+      "DT_OTLP_ENDPOINT and DT_API_TOKEN are required when OTLP export is on " +
+        "(load .env, or set OTLP_DISABLED=1 for offline mode)"
+    );
+  }
   // Export failures must warn on the console and never crash or block the app.
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.WARN);
   provider = new LoggerProvider({
