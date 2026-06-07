@@ -41,32 +41,54 @@ this trial.) If the classic endpoint is unavailable, unset `DT_EVENTS_ENDPOINT` 
 the script warns and continues, and the INFO "deployment complete" log line is
 the deploy marker the agent finds via DQL instead.
 
-## 3. Log metric
+## 3. Log metric (OpenPipeline — classic Metrics extraction does NOT work)
 
-Settings → Log Monitoring → Metrics extraction. New log metric:
+**Verified 2026-06-08:** the classic screen (Settings → Log Monitoring →
+Metrics extraction) accepts the config but never matches — OTLP-ingested logs
+land in Grail via OpenPipeline, which classic extraction rules don't see. No
+error, zero data points (BUILD_NOTES §6b). Configure in the **OpenPipeline**
+app instead, two parts, both required:
 
-- **Key:** `log.driftwood.pool_timeouts`
-- **Matcher:** `error.type == "pool_timeout"` — if log-attribute matchers are
-  limited on the trial, fall back to `loglevel == ERROR` AND
-  `service.name == driftwood-inventory` (equivalent here: the app's only ERROR
-  lines are request failures)
-- **Measure:** occurrence count
+1. **Pipeline** — OpenPipeline → Logs → Pipelines → add pipeline
+   `driftwood-inventory`. On its **Metric extraction** tab add a **Counter
+   metric** processor:
+   - Matcher (DQL): `error.type == "pool_timeout"`
+   - Metric key: `log.driftwood.pool_timeouts`
+   - Metric name: `Driftwood pool timeouts`
+   - Dimensions: none
+2. **Dynamic route** — OpenPipeline → Logs → Dynamic routing → add route
+   matching `service.name == "driftwood-inventory"` → target the pipeline
+   above. Routing is first-match: the route must sit above any catch-all. A
+   pipeline with no route matches nothing.
 
-## 4. Metric event → problem
+Extraction applies only to records ingested *after* the route is saved
+(observed: metric ticking ~1–2 min after save).
 
-Settings → Anomaly detection → Metric events. New config on
-`log.driftwood.pool_timeouts`:
+## 4. Metric event → problem (selector mode — key mode does NOT work)
 
-- **Threshold:** static, ≥ 30 per minute, over 1 minute. The bad deploy drops
-  the pool to **1 slot** (`bad-deploy.mjs`); at `--rate=40` the queue outgrows
-  the 2 s acquire timeout and most requests fail — hundreds of timeouts/min,
-  far above the threshold, while a healthy pool (50 slots) produces zero.
-  Tune if observed rates differ.
-- **Severity:** ERROR (raises a problem)
+Settings → Anomaly detection → Metric events, new config. **Verified
+2026-06-08:** "Metric Key" mode cannot evaluate Grail/OpenPipeline metrics —
+selecting the key errors "This metric is only supported in
+metric-selector-based query mode" (BUILD_NOTES §6c). Use:
+
+- **Type:** Metric Selector — `log.driftwood.pool_timeouts:splitBy():sum`
+  (aggregation lives in the selector string; the separate Aggregation
+  dropdown is inert in this mode)
+- **Threshold:** static, ≥ 30 per minute, alert when above. The bad deploy
+  drops the pool to **1 slot** (`bad-deploy.mjs`); at `--rate=40` the queue
+  outgrows the 2 s acquire timeout and most requests fail — observed ~1,000
+  timeouts/min, while a healthy pool (50 slots) produces zero.
+- **Violating samples:** 2, **Sliding window:** 3, **Dealerting samples:** 3
+  (default 3-of-5 alone eats most of the ≤5 min deploy→problem budget; with a
+  30× violation margin, 2-of-3 is flap-proof. Dealerting 3 ⇒ rollback→close
+  took ~10.5 min including tenant lag — plan the video around it.)
+- **Event type:** Error (this is what raises a Davis *problem*)
 - **Title:** `Driftwood inventory: connection pool timeouts`
 
 Static threshold, not auto-baseline: a trial tenant has no baseline history,
-and determinism on camera beats cleverness.
+and determinism on camera beats cleverness. Gate run 2026-06-08: problem
+P-26061 opened on the first poll ~60 s after the config was saved, with Davis
+backdating the start to the true violation onset.
 
 ## 5. Verification gate (must pass before agent work)
 
