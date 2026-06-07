@@ -51,7 +51,60 @@ two hosts. The OTel ingest entry belongs to the **agent's** policy (it runs the
 exporter), not the MCP server's — decide at agent-build time whether agent + server
 share one sandbox (one merged manifest) or two.
 
-## 6. Env surface, for the record
+## 6. Demo-app verification gate (2026-06-07/08): three findings, all "config accepted, nothing happened"
+
+Gate per `demo-app/TENANT_SETUP.md` §5, run live against the trial tenant. The
+detection pipeline (OTLP logs → Grail → log metric → metric event → Davis
+problem) failed silently at three places before working end-to-end. None of
+the three produced an error at config time; all three surfaced only by pushing
+real data through and watching where it stopped.
+
+**(a) Platform OTLP path rejects token auth.** The gen-3 path
+(`.apps.dynatrace.com/platform/otlp/v1/logs`) returns 401 "Unsupported
+authorization scheme 'Api-Token'. Dynatrace platform APIs require 'Bearer'."
+Api-Token auth means the classic path
+(`.live.dynatrace.com/api/v2/otlp/v1/logs`). Consequence for the manifests:
+the demo app egresses to `live.dynatrace.com` while the MCP server egresses
+only to `apps.dynatrace.com` — same tenant, different API generations,
+different hosts. The demo app sits outside the sandbox so this doesn't change
+the compiled policy, but it's a concrete instance of why egress must be
+enumerated per-process, not per-vendor.
+
+**(b) Classic "Metrics extraction" silently no-ops on OpenPipeline logs.** The
+classic Settings screen accepted the log metric (key, matcher, measure) without
+complaint; the metric never produced a data point. Logs ingested via OTLP land
+in Grail through OpenPipeline, and classic extraction rules never see them.
+Fix: a dedicated OpenPipeline pipeline (counter-metric processor, matcher
+`error.type == "pool_timeout"`) **plus** a dynamic route
+(`service.name == "driftwood-inventory"`) — a pipeline with no route matches
+nothing, and routing is first-match. Metric ticked ~1–2 min after the route
+was saved (~1,000 timeouts/min at rate 40 against pool 1; threshold 30).
+
+**(c) Metric-key mode can't see Grail metrics.** The metric-event config
+accepted key mode at creation; once data existed, selecting the key errored
+"This metric is only supported in metric-selector-based query mode," and the
+aggregation dropdown pinned to "value". Selector mode with
+`log.driftwood.pool_timeouts:splitBy():sum` worked — problem opened on the
+**first poll ~60 s after saving** (2-of-3 violating samples, static ≥30/min),
+and Davis backdated the problem start to the actual violation onset (~9 min
+earlier). Title, ERROR severity, and visibility via `list_problems` (the
+agent's own call) all confirmed.
+
+**Lag ledger (recording-night numbers):** OTLP record → queryable in Grail
+< 1 min (verified twice, ~40 s each). With the tenant pre-configured,
+bad-deploy → problem-open ≈ 3–5 min (ingest + 2 violating minutes). Poisoned
+record (User-Agent on a failed request) → readable via the MCP server's
+`execute_dql` in ~41 s, full payload rendered as plain text in `user_agent`.
+Problem close after rollback: ~10.5 min observed (rollback 19:24:48Z → CLOSED
+by 19:35:18Z poll; dealerting 3 clean minutes plus tenant-side evaluation lag).
+Close is noticeably slower than open — in the video, "rollback → problem
+closes itself" is a narrated time-skip, not dead air.
+
+**Boundary note:** the demo app (`driftwood-inventory`) runs unsandboxed by
+design — it is the monitored fiction, not the agent. The sandbox boundary
+wraps agent + MCP server only; the app's OTLP export happens outside it.
+
+## 7. Env surface, for the record
 
 Read by the server: `DT_ENVIRONMENT`, `DT_PLATFORM_TOKEN` (injected);
 `DT_GRAIL_QUERY_BUDGET_GB` (read, default 1000 GB; trial session showed 5000);
