@@ -7,17 +7,20 @@ material) and `BUILD_NOTES.md` (findings), not this file.
 
 ## 1. Verify the OTLP logs endpoint
 
-The platform OTLP path assumed in `.env.example` is
-`https://egc32068.apps.dynatrace.com/platform/otlp/v1/logs`. Verify against the
-tenant docs (Settings → OpenTelemetry, or the OTLP ingest docs for gen-3
-platform environments). Then:
+**Verified 2026-06-07:** the endpoint is the **classic** OTLP path,
+`https://egc32068.live.dynatrace.com/api/v2/otlp/v1/logs`. The platform
+gateway path (`.apps.dynatrace.com/platform/otlp/v1/logs`) rejects `Api-Token`
+auth with 401 — "Dynatrace platform APIs require the authorization scheme
+'Bearer'". Token auth means classic API v2. (Consequence worth knowing: the
+demo app egresses to `live.dynatrace.com` while the MCP server egresses to
+`apps.dynatrace.com` — different API generations, different hosts.)
 
 - Create an access token with scopes: `logs.ingest`, `events.ingest`. Put it in
   `demo-app/.env` as `DT_API_TOKEN`.
 - Run `node --env-file=.env scripts/verify-ingest.mjs` and confirm the record
   arrives via the printed DQL. Record the observed ingest lag.
-- If the path 404s, correct `DT_OTLP_ENDPOINT` in `.env` (and fix
-  `.env.example` + this doc).
+  (2026-06-07 run: arrived in < 1 min, confirmed via the MCP server's
+  `execute_dql`.)
 
 > **Sandbox-boundary note (for the agent slice):** the demo app exports OTLP
 > from *outside* the sandbox — it is the monitored fiction, not the agent. The
@@ -33,7 +36,8 @@ own call**, independent of the MCP server — the MCP dist never touches
 `live.dynatrace.com` (BUILD_NOTES §5), so the server's behavior tells us
 nothing about whether this trial exposes the classic API. Verify directly: run
 `bad-deploy.mjs` once with `.env` loaded and check the event appears in the
-tenant. If the classic endpoint is unavailable, unset `DT_EVENTS_ENDPOINT` —
+tenant. (2026-06-07 run: `201 {"reportCount":1,...,"status":"OK"}` — works on
+this trial.) If the classic endpoint is unavailable, unset `DT_EVENTS_ENDPOINT` —
 the script warns and continues, and the INFO "deployment complete" log line is
 the deploy marker the agent finds via DQL instead.
 
