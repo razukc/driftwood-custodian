@@ -13,56 +13,83 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
-from zoneinfo import ZoneInfo
+import os
+from pathlib import Path
 
 from google.adk.agents import Agent
 from google.adk.apps import App
 from google.adk.models import Gemini
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from google.genai import types
+from mcp import StdioServerParameters
 
-import os
+# Vertex AI auth (ADC): billed against the GCP project's credits. Still a
+# single LLM egress host for the capgate manifest — aiplatform.googleapis.com
+# (was generativelanguage.googleapis.com under the AI Studio key; switched
+# 2026-06-08 when the free-tier key ran out of quota).
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "rapidagent-498217")
+os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
 
-# AI Studio API-key auth (not Vertex): keeps the agent's LLM egress to a
-# single host — generativelanguage.googleapis.com — which is what the
-# capgate manifest declares. GOOGLE_API_KEY comes from the environment.
-os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "False"
-if not os.environ.get("GOOGLE_API_KEY"):
-    raise RuntimeError("GOOGLE_API_KEY is not set (AI Studio key required)")
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def get_weather(query: str) -> str:
-    """Simulates a web search. Use it get information on weather.
+def _load_repo_env() -> dict[str, str]:
+    """Tenant credentials for the MCP server child process.
 
-    Args:
-        query: A string containing the location to get weather information for.
-
-    Returns:
-        A string with the simulated weather information for the queried location.
+    Same surface as scripts/mcp-client.mjs: repo-root .env (gitignored)
+    carrying DT_ENVIRONMENT + DT_PLATFORM_TOKEN. Values already present in
+    os.environ win, so the sandbox can inject instead of mounting the file.
     """
-    if "sf" in query.lower() or "san francisco" in query.lower():
-        return "It's 60 degrees and foggy."
-    return "It's 90 degrees and sunny."
+    env: dict[str, str] = {}
+    env_file = _REPO_ROOT / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            key, sep, value = line.partition("=")
+            if sep and key and not key.startswith("#"):
+                env.setdefault(key.strip(), value.strip())
+    env.update(
+        {k: v for k, v in os.environ.items() if k.startswith("DT_")}
+    )
+    missing = {"DT_ENVIRONMENT", "DT_PLATFORM_TOKEN"} - env.keys()
+    if missing:
+        raise RuntimeError(
+            f"missing {sorted(missing)} — set in repo-root .env or the environment"
+        )
+    # Telemetry stays ON by default: the demo's egress-block beat needs the
+    # server's OpenKit beacon attempt to exist so the sandbox can refuse it.
+    return env
 
 
-def get_current_time(query: str) -> str:
-    """Simulates getting the current time for a city.
+# Pinned local install, spawned directly — never `npx -y` at runtime: the
+# sandbox has no registry.npmjs.org egress (install-time vs run-time egress
+# are different manifests; see BUILD_NOTES).
+_MCP_SERVER_ENTRY = (
+    _REPO_ROOT / "node_modules" / "@dynatrace-oss" / "dynatrace-mcp-server" / "index.js"
+)
 
-    Args:
-        city: The name of the city to get the current time for.
-
-    Returns:
-        A string with the current time information.
-    """
-    if "sf" in query.lower() or "san francisco" in query.lower():
-        tz_identifier = "America/Los_Angeles"
-    else:
-        return f"Sorry, I don't have timezone information for query: {query}."
-
-    tz = ZoneInfo(tz_identifier)
-    now = datetime.datetime.now(tz)
-    return f"The current time for query {query} is {now.strftime('%Y-%m-%d %H:%M:%S %Z%z')}"
-
+dynatrace_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="node",
+            args=[str(_MCP_SERVER_ENTRY)],
+            env=_load_repo_env(),
+        ),
+        timeout=30,
+    ),
+    # Investigation surface only. The capgate manifest still covers all 20
+    # server tools; this filter is belt-and-suspenders at the framework
+    # layer — a tool-level constraint above the OS-level sandbox's altitude.
+    tool_filter=[
+        "get_environment_info",
+        "list_problems",
+        "find_entity_by_name",
+        "verify_dql",
+        "execute_dql",
+        "list_exceptions",
+    ],
+)
 
 root_agent = Agent(
     name="root_agent",
@@ -72,8 +99,13 @@ root_agent = Agent(
         model="gemini-3.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
-    instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-    tools=[get_weather, get_current_time],
+    instruction=(
+        "You are an SRE assistant for Driftwood Goods. You investigate "
+        "incidents in the driftwood-inventory service using the Dynatrace "
+        "tools: list open problems, query logs and metrics with DQL, and "
+        "correlate findings. Report what you find with the evidence."
+    ),
+    tools=[dynatrace_toolset],
 )
 
 app = App(

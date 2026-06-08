@@ -4,6 +4,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export async function connectMcp(name) {
   const env = { ...process.env };
@@ -23,9 +24,15 @@ export async function connectMcp(name) {
   // Helper runs stay quiet; the DEMO run leaves telemetry on so the sandbox can block it.
   env.DT_MCP_DISABLE_TELEMETRY = 'true';
 
+  // Spawn the pinned local install directly — never `npx -y` at runtime:
+  // inside the sandbox there is no registry.npmjs.org egress (BUILD_NOTES).
+  const serverEntry = new URL(
+    '../node_modules/@dynatrace-oss/dynatrace-mcp-server/index.js',
+    import.meta.url
+  );
   const transport = new StdioClientTransport({
-    command: 'npx',
-    args: ['-y', '@dynatrace-oss/dynatrace-mcp-server'],
+    command: 'node',
+    args: [fileURLToPath(serverEntry)],
     env,
   });
 

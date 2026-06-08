@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@dynatrace-oss/dynatrace-mcp-server": "^1.8.6",
     "@modelcontextprotocol/sdk": "^1.29.0"
   }
 }
