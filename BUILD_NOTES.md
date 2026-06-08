@@ -114,3 +114,45 @@ platform token), `SLACK_CONNECTION_ID` (only if Slack tool used),
 "logged but not fully enforced" proxy quirk from the plan). `--clearenv` in the bwrap
 policy means anything not declared is stripped — the proxy vars vanish inside the
 sandbox, which is *more* deterministic than the server's own proxy handling.
+
+## 8. Egress enforcement lane (agent-slice Task 0 spike, 2026-06-08)
+
+capgate emits `egress[]`; enforcement is the host's job. Spiked three lanes on
+Docker Desktop for Windows, top-down by fidelity. **Lane (a) — sidecar gateway —
+won on the first try; (b) and (c) never ran.**
+
+Shape: a `driftwood-gateway` container (alpine + nftables, `--cap-add NET_ADMIN`)
+reads the *compiled policy file itself* (`policy/policy.docker.json`, mounted
+read-only) and programs a default-drop output chain, ACCEPTing only resolved
+IPs of the declared `host:port` pairs. Workload containers join with
+`--network container:egress-gateway` and inherit the firewall; with
+`--cap-drop ALL` they cannot remove it (nftables needs CAP_NET_ADMIN, which
+only the gateway holds). DNS stays open to Docker's embedded resolver
+(127.0.0.11) only.
+
+Verified from a joined `--cap-drop ALL` container:
+
+| Target | Result |
+|---|---|
+| `egc32068.apps.dynatrace.com:443` (allowlisted) | TLS handshake completes, HTTP 401 (no token — expected) |
+| `example.com:443` | refused in 12 ms |
+| `bf96767wvv.bf.dynatrace.com:443` (telemetry beacon) | refused in 67 ms |
+
+Two details that matter for the demo:
+
+- **`reject` not `drop`.** First build used `drop`; denied connects hung to
+  curl's timeout. Switched the terminal rule to
+  `reject with icmpx admin-prohibited` — the caller gets "Could not connect to
+  server" in milliseconds. On camera the agent *reports* the refusal instead
+  of stalling; the security beat reads as enforcement, not as a network flake.
+- **The gateway consumes the compiled artifact directly.** No hand-copied IP
+  list — `jq '.egress[]'` over capgate's output is the entire configuration
+  surface. The policy file is the single source of truth from manifest to
+  firewall rule, and the deny rule keeps packet counters
+  (`nft list chain inet egressgw output`) as refusal evidence.
+
+Caveats, recorded: allowlist is IP-resolved at gateway start + re-resolved
+every 60 s, so a rotation inside that window could produce a false deny
+(fail-closed — acceptable); the lane enforces *connection* egress, not
+tenant-mediated data egress, which is exactly the two-altitudes boundary the
+`assert:` entries already declare.
