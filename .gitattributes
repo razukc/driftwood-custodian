@@ -1,3 +1,4 @@
 # Compiled policy output is serialized JSON (always LF). Pin to LF so Windows
 # checkouts with core.autocrlf=true don't produce noisy diffs on re-compilation.
 policy/*.json text eol=lf
+sandbox/gateway/entrypoint.sh text eol=lf
