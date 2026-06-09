@@ -205,3 +205,35 @@ variables that must be injected at container launch:
 - GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION (set via Docker -e or --env-file)
 - ADC (Application Default Credentials) auth: agent code runs under Vertex AI ADC
   (GOOGLE_GENAI_USE_VERTEXAI=True); ADC file path mounting is Task 6 scope
+
+## 11. Task 6 Gate & Rehearsal (Final)
+
+**Deliverables:**
+- Dockerfile (Node 20 + Python 3.12, multi-stage, venv, agent deps pinned,
+  MCP server bundled, read-only /app, tmpfs /tmp)
+- scripts/run-sandboxed.mjs (launch wrapper: reads policy.docker.json, assembles
+  docker run with argv/env/network)
+- scripts/rehearsal.mjs (full two-path demo orchestration: bad deploy → poison
+  inject → agent investigate+detect → HITL approve → rollback)
+
+**Final architecture:**
+- agent + MCP server in single merged manifest (Task 5) → single compiled policy
+- merged policy includes both OS-level constraints (egress, caps, sec-opts) and
+  declarative assertions (two altitudes)
+- agent runs inside Docker container, reads tenant via MCP server (stdio spawn),
+  can be attacked via log injection but refuses per instruction + sandbox egress
+  enforcement would block exfil if agent tried
+- rehearsal confirms: injection detected ✓, root cause found ✓, HITL flow works ✓,
+  rollback executes ✓
+
+**Rehearsal outcomes (2026-06-10):**
+- Two-altitude defense verified end-to-end
+- Agent behavior: autonomous DQL chains, self-correcting queries, correct
+  injection classification
+- Rollback tool works (HTTP 200, state transitions observed)
+- All beats filmed/recordable in live demo
+
+**Task 7 (stretch):** Deferred. Agent OTel export would add `net:connect:
+egc32068.live.dynatrace.com:443` + `env:inject:DT_API_TOKEN` to manifest +
+recompile; requires additional tenant setup (classic endpoint routing per
+BUILD_NOTES §6a). Cut to preserve Task 8 timeline.
