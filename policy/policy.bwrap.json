@@ -45,8 +45,18 @@
   ],
   "egress": [
     {
+      "host": "aiplatform.googleapis.com",
+      "port": 443,
+      "blockPrivate": true
+    },
+    {
       "host": "egc32068.apps.dynatrace.com",
       "port": 443,
+      "blockPrivate": true
+    },
+    {
+      "host": "host.docker.internal",
+      "port": 3000,
       "blockPrivate": true
     },
     {
@@ -59,6 +69,8 @@
     "DT_ENVIRONMENT",
     "DT_GRAIL_QUERY_BUDGET_GB",
     "DT_PLATFORM_TOKEN",
+    "GOOGLE_CLOUD_LOCATION",
+    "GOOGLE_CLOUD_PROJECT",
     "SLACK_CONNECTION_ID"
   ],
   "assertions": [
@@ -85,6 +97,6 @@
   ],
   "notes": [
     "fs: \"/app/**\" lowered to directory bind \"/app\" — bwrap binds directories, not globs. Fine-grained glob enforcement is the server's job.",
-    "net: 2 endpoint(s) declared — host MUST route outbound traffic through an egress proxy honoring egress[]"
+    "net: 4 endpoint(s) declared — host MUST route outbound traffic through an egress proxy honoring egress[]"
   ]
 }

@@ -178,3 +178,30 @@ admin-prohibited` rejection, visible to the agent as a network error.
 egress block) work independently and reinforce each other. The demonstration
 confirms that the agent's security posture holds even when attacked by poisoned
 data from within its own data source (the logs).
+
+## 10. Merged manifest (agent + MCP server, Task 5)
+
+The agent+MCP sandbox is a single compiled artifact. Updated manifest structure:
+
+**New serverCapabilities (agent layer additions):**
+- `net:connect:aiplatform.googleapis.com:443` — Gemini API (Vertex AI ADC auth)
+- `net:connect:host.docker.internal:3000` — rollback tool POST to demo app
+- `env:inject:GOOGLE_CLOUD_PROJECT` — Vertex AI project
+- `env:inject:GOOGLE_CLOUD_LOCATION` — Vertex AI location (default: global)
+
+**Preserved from MCP server:**
+- DT_ENVIRONMENT, DT_PLATFORM_TOKEN (env inject)
+- egc32068.apps.dynatrace.com:443, sso.dynatrace.com:443 (net)
+- All 5 `assert:` entries (two altitudes declarations)
+
+**Compilation:** `capgate compile policy/manifest.json --target {docker,bwrap}`
+produced `policy.docker.json` and `policy.bwrap.json` with 4 egress endpoints.
+Note: `host.docker.internal` is Docker-specific (bwrap would use `localhost`);
+this is the grammar-gap echo from finding #2 (scope parameterization for grammar 0.1).
+
+**Environment wiring (Task 5→Task 6):** The compiled policy declares env
+variables that must be injected at container launch:
+- DT_ENVIRONMENT, DT_PLATFORM_TOKEN (from repo-root `.env`, gitignored)
+- GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION (set via Docker -e or --env-file)
+- ADC (Application Default Credentials) auth: agent code runs under Vertex AI ADC
+  (GOOGLE_GENAI_USE_VERTEXAI=True); ADC file path mounting is Task 6 scope

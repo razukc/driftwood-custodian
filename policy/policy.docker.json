@@ -17,12 +17,26 @@
     "--env",
     "DT_PLATFORM_TOKEN",
     "--env",
+    "GOOGLE_CLOUD_LOCATION",
+    "--env",
+    "GOOGLE_CLOUD_PROJECT",
+    "--env",
     "SLACK_CONNECTION_ID"
   ],
   "egress": [
     {
+      "host": "aiplatform.googleapis.com",
+      "port": 443,
+      "blockPrivate": true
+    },
+    {
       "host": "egc32068.apps.dynatrace.com",
       "port": 443,
+      "blockPrivate": true
+    },
+    {
+      "host": "host.docker.internal",
+      "port": 3000,
       "blockPrivate": true
     },
     {
@@ -35,6 +49,8 @@
     "DT_ENVIRONMENT",
     "DT_GRAIL_QUERY_BUDGET_GB",
     "DT_PLATFORM_TOKEN",
+    "GOOGLE_CLOUD_LOCATION",
+    "GOOGLE_CLOUD_PROJECT",
     "SLACK_CONNECTION_ID"
   ],
   "assertions": [
@@ -60,7 +76,7 @@
     }
   ],
   "notes": [
-    "net: 2 endpoint(s) declared — host MUST attach the container to a network whose egress honors egress[]; do NOT use --network host",
+    "net: 4 endpoint(s) declared — host MUST attach the container to a network whose egress honors egress[]; do NOT use --network host",
     "fs: \"/app/**\" lowered to volume mount \"/app\" — Docker mounts directories, not globs. Fine-grained glob enforcement is the server's job."
   ]
 }

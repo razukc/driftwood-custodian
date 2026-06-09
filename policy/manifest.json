@@ -1,12 +1,17 @@
 {
-  "name": "@dynatrace-oss/dynatrace-mcp-server",
-  "version": "1.8.6",
+  "name": "driftwood-custodian",
+  "version": "0.0.1",
   "grammar": "0.0",
+  "description": "Merged manifest: Dynatrace MCP server (1.8.6) + driftwood-agent (ADK, Gemini-3.5-flash)",
   "serverCapabilities": [
     "net:connect:egc32068.apps.dynatrace.com:443",
     "net:connect:sso.dynatrace.com:443",
+    "net:connect:aiplatform.googleapis.com:443",
+    "net:connect:host.docker.internal:3000",
     "env:inject:DT_ENVIRONMENT",
     "env:inject:DT_PLATFORM_TOKEN",
+    "env:inject:GOOGLE_CLOUD_PROJECT",
+    "env:inject:GOOGLE_CLOUD_LOCATION",
     "env:read:DT_GRAIL_QUERY_BUDGET_GB",
     "fs:read:/app/**"
   ],
