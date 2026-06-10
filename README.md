@@ -34,11 +34,70 @@ request header. This submission demos both paths:
 | `scripts/` | Verification utilities (MCP handshake / tool-inventory check) |
 | `BUILD_NOTES.md` | Findings recorded during the build |
 
+## Quick Start (for judges)
+
+### Prerequisites
+
+- Node.js 20+, Python 3.12+, Docker
+- Google Cloud: Vertex AI ADC auth (`gcloud auth application-default login`)
+- Dynatrace: Trial tenant + MCP server credentials
+
+### Setup
+
+```bash
+# Install dependencies
+npm install
+uv sync  # or: python -m venv .venv && source .venv/bin/activate && pip install -r driftwood-agent/requirements.txt
+
+# Configure credentials (gitignored .env file)
+cat > .env <<EOF
+DT_ENVIRONMENT=your-environment-id
+DT_PLATFORM_TOKEN=your-platform-token
+GOOGLE_CLOUD_PROJECT=your-gcp-project
+GOOGLE_CLOUD_LOCATION=global
+EOF
+
+# Start the ADK API server (one terminal)
+adk api_server --host 127.0.0.1 --port 8123 driftwood-agent
+
+# Run the agent (another terminal)
+node scripts/agent-session.mjs http://127.0.0.1:8123
+[maya] > Investigate the driftwood-inventory service
+```
+
+### See the two-path demo
+
+**Happy path:** Bad deployment → agent investigates DQL → finds root cause → proposes rollback (HITL-approved)  
+**Security path:** Poisoned log (injection directive) → agent detects as DATA not instruction → reports to operator
+
+```bash
+# Full rehearsal (sets up incident, injects poison, runs agent, confirms rollback)
+node scripts/rehearsal.mjs
+```
+
+## Architecture
+
+- **Agent:** Python ADK (Gemini-3.5-flash, Vertex AI auth, google-agents-cli scaffold)
+- **MCP Integration:** Dynatrace MCP server via `MCPToolset` (stdio spawn, 20 tools, investigation-set filtered)
+- **Sandbox:** Docker container, policies compiled from `policy/manifest.json` via [capgate](https://github.com/razukc/capgate)
+- **HITL:** Native ADK `require_confirmation=True` on rollback tool
+- **Egress enforcement:** Sidecar nftables gateway (reads `policy.docker.json`, default-drop + allowlist, instant `icmpx admin-prohibited` refusal)
+
+## Key findings (BUILD_NOTES)
+
+1. **Tool-level exfil channels:** Email/Slack route through allowed tenant endpoint (declare with `assert:`, not visible to OS-level sandbox)
+2. **Grammar gap:** No scope parameterization (`${VAR}`) in capgate v0.0 (candidate for v0.1)
+3. **Injection defense verified:** Agent instruction + OS-level egress block work independently; threat model = logs are injectable
+4. **Egress enforcement:** Sidecar gateway pattern (nftables, policy-driven, rejects unknown domains with visible refusal, not timeout)
+5. **ADK + MCP:** stdio spawn, tool filter at framework layer, two altitudes of security
+
+## Team
+
+- Raju KC (razukc) — Agent development, security design, capgate integration
+
 ## Disclosure
 
-I'm also the author of [capgate](https://github.com/razukc/capgate); the submission
-uses it as one of several design tools, and is judged on the agent's behavior, not
-on capgate as a product.
+Author of [capgate](https://github.com/razukc/capgate). This submission is judged on agent behavior, not capgate as a product.
 
 ## License
 
