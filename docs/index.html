@@ -284,10 +284,14 @@
                 underlying sandbox work independently to prevent injection attacks.
             </p>
             <div class="highlight" style="margin-top: 1.5rem;">
-                <strong>▶ Try it live:</strong> the agent is deployed on Google Cloud Run.
-                Open <a href="https://driftwood-agent-1035154342517.us-east1.run.app/dev-ui/?app=app">the live agent UI</a>
-                and ask it to <em>"Investigate the driftwood-inventory service."</em> It queries the Dynatrace
-                tenant through the MCP server and reports the active incident.
+                <strong>▶ Try it live:</strong> the agent is deployed on Google Cloud Run. To drive it:
+                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Open <a href="https://driftwood-agent-1035154342517.us-east1.run.app/dev-ui/?app=app">the live agent UI</a> (the ADK developer console).</li>
+                    <li>Confirm <strong>app</strong> is selected in the agent dropdown (top-left).</li>
+                    <li>Type into the chat box: <em>"Investigate the driftwood-inventory service."</em></li>
+                </ol>
+                It queries the live Dynatrace tenant through the MCP server and reports the active incident
+                (give the first response ~10–20s — Gemini, MCP spawn, and a real Grail query).
             </div>
         </section>
 
