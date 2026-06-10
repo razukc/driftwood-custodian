@@ -486,8 +486,8 @@ node scripts/rehearsal.mjs
                 Watch the two-path demo (investigation + injection detection) in action:
             </p>
             <div class="video-container">
-                <iframe src="https://www.youtube.com/embed/8RL2vZ09uUY"
-                        title="Driftwood Custodian — demo"
+                <iframe src="https://www.youtube.com/embed/8RL2vZ09uUY?si=l3cMCV8IAj3YxKhB"
+                        title="YouTube video player" frameborder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen></iframe>
@@ -496,7 +496,9 @@ node scripts/rehearsal.mjs
                 <a href="https://youtu.be/8RL2vZ09uUY">Watch on YouTube</a>
             </p>
             <p style="color: #666; font-size: 0.9rem; margin-top: 1rem;">
-                Timeline: ~30s setup → 1m investigation & injection → 30s HITL approval & rollback → 30s narrated recovery
+                What happens in the agent run: investigates via Dynatrace MCP (~0:50) &rarr;
+                flags the prompt injection in the request headers &rarr; operator approves the
+                rollback (HITL) &rarr; rollback executes and the Davis problem closes.
             </p>
         </section>
 
