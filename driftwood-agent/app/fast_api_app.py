@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
 
-from app.app_utils.telemetry import setup_telemetry
+from app.app_utils.telemetry import attach_dynatrace_traces, setup_telemetry
 from app.app_utils.typing import Feedback
 
 setup_telemetry()
@@ -49,6 +49,11 @@ app: FastAPI = get_fast_api_app(
 )
 app.title = "driftwood-agent"
 app.description = "API for interacting with the Agent driftwood-agent"
+
+# get_fast_api_app installed the global TracerProvider (otel_to_cloud=True) above;
+# now also fan spans out to the Dynatrace tenant the agent investigates. No-op
+# locally where DT_TRACE_ENDPOINT/DT_TRACE_TOKEN are unset.
+attach_dynatrace_traces()
 
 
 @app.post("/feedback")
