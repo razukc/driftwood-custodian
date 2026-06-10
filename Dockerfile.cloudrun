@@ -1,0 +1,47 @@
+# Cloud Run serving image for driftwood-agent.
+#
+# Distinct from the repo-root Dockerfile (interactive `agents-cli run` sandbox
+# demo) and driftwood-agent/Dockerfile (uvicorn but no Node). This one runs the
+# FastAPI/uvicorn web service AND carries Node + the Dynatrace MCP server that
+# app/agent.py spawns as a stdio child process.
+#
+# Layout is load-bearing: agent.py computes _REPO_ROOT = parents[2] of
+# app/agent.py, then resolves node_modules/@dynatrace-oss/.../index.js from it.
+# So the agent must live at /code/driftwood-agent/app/agent.py (=> _REPO_ROOT
+# is /code) with node_modules at /code/node_modules.
+
+FROM python:3.12-slim
+
+# Node 22 (runtime for the Dynatrace MCP stdio server) + uv (Python deps).
+# Must be 22, not 20: the MCP server bundles an undici that calls
+# webidl.util.markAsUncloneable, which only exists in Node >= 22 — Node 20
+# crashes the server at import (TypeError). Matches the local Node 22 that works.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir uv==0.8.13
+
+WORKDIR /code
+
+# Python agent. uv.lock is the source of truth (google-adk pulls google-genai +
+# mcp transitively, matching local runtime).
+COPY driftwood-agent/pyproject.toml driftwood-agent/uv.lock driftwood-agent/README.md ./driftwood-agent/
+COPY driftwood-agent/app ./driftwood-agent/app
+RUN cd /code/driftwood-agent && uv sync --frozen --no-dev
+
+# The pinned Dynatrace MCP server. index.js is a prebuilt bundle but still
+# require()s the hoisted top-level `open` dep, so copy the whole tree (30 MB)
+# rather than the @dynatrace-oss scope alone — guarantees runtime resolution.
+COPY node_modules ./node_modules
+
+ENV GOOGLE_GENAI_USE_VERTEXAI=True \
+    PYTHONUNBUFFERED=1 \
+    PATH="/code/driftwood-agent/.venv/bin:$PATH"
+
+EXPOSE 8080
+
+# get_fast_api_app(agents_dir=AGENT_DIR) discovers the `app` agent package
+# relative to /code/driftwood-agent; --app-dir puts it on sys.path.
+CMD ["uvicorn", "app.fast_api_app:app", "--app-dir", "/code/driftwood-agent", "--host", "0.0.0.0", "--port", "8080"]

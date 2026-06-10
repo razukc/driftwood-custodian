@@ -1,0 +1,18 @@
+# Build the Cloud Run serving image from Dockerfile.cloudrun.
+# `gcloud run deploy --source` / `builds submit --tag` only honor a file named
+# `Dockerfile`; this config lets us point docker build at the custom name with -f
+# while keeping the root Dockerfile (sandbox demo) untouched.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile.cloudrun
+      - -t
+      - us-east1-docker.pkg.dev/$PROJECT_ID/driftwood/driftwood-agent:latest
+      - .
+images:
+  - us-east1-docker.pkg.dev/$PROJECT_ID/driftwood/driftwood-agent:latest
+options:
+  machineType: E2_HIGHCPU_8
+timeout: 1200s

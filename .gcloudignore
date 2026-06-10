@@ -1,0 +1,38 @@
+# Cloud Build upload context for Dockerfile.cloudrun.
+#
+# IMPORTANT: gcloud falls back to .gitignore when this file is absent, and
+# .gitignore excludes node_modules/ — which the Dockerfile must COPY for the
+# Dynatrace MCP server. This file replaces that behavior: it KEEPS the root
+# node_modules and trims only true build-context bloat.
+
+# VCS / tooling
+.git/
+.github/
+.claude/
+
+# Python virtualenvs (466 MB locally; rebuilt inside the image via uv sync)
+.venv/
+**/.venv/
+**/__pycache__/
+*.pyc
+
+# Secrets & local-only material (secrets reach Cloud Run via Secret Manager)
+.env
+**/.env
+.local/
+
+# The demo app and its own node_modules are not part of the agent image
+demo-app/
+
+# capgate tooling artifacts, packaged tarballs, scratch
+*.tgz
+*.local_tmp*.json
+codeplaygroundruntime.local_tmp*.json
+install.cmd
+
+# Docs site / superpowers internals
+docs/
+BUILD_NOTES.md
+
+# Do NOT ignore root node_modules — the MCP server lives there.
+!node_modules/
