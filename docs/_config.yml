@@ -1,0 +1,6 @@
+title: driftwood-custodian
+description: An incident-investigation agent that won't do things it wasn't told it's allowed to do
+theme:
+url: "https://razukc.github.io/driftwood-custodian"
+plugins:
+  - jekyll-default-layout

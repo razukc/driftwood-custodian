@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>driftwood-custodian — Incident Investigation with Security</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            color: #aaa;
+            font-style: italic;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        section h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        section h3 {
+            color: #764ba2;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+        }
+
+        .highlight {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .tech-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .tech-item strong {
+            color: #667eea;
+        }
+
+        .threat-model {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .threat-model h3 {
+            color: #856404;
+            margin-bottom: 1rem;
+        }
+
+        .path {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .path.security {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+
+        .path h4 {
+            color: #2e7d32;
+            margin-bottom: 0.5rem;
+        }
+
+        .path.security h4 {
+            color: #c62828;
+        }
+
+        .findings {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .finding {
+            background: #f5f5f5;
+            padding: 1.5rem;
+            border-radius: 6px;
+            border-top: 3px solid #667eea;
+        }
+
+        .finding strong {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #764ba2;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #653a8a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.4);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        footer {
+            background: rgba(0, 0, 0, 0.8);
+            color: #aaa;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            margin: 1.5rem 0;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .code-block code {
+            color: #d4d4d4;
+        }
+
+        ul {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        ul li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🛡️ driftwood-custodian</h1>
+        <p>An incident-investigation agent that won't do things it wasn't told it's allowed to do</p>
+    </header>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <section>
+            <h2>The Project</h2>
+            <p>
+                <strong>driftwood-custodian</strong> is an AI agent built for <strong>Maya</strong>, the on-call engineer
+                at Driftwood Goods — a 25-person B2B SaaS startup. When production breaks, Maya can ask the agent to
+                investigate automatically through <strong>Dynatrace</strong>, diagnose the root cause, and propose
+                remediation with human approval required before execution.
+            </p>
+            <p style="margin-top: 1rem;">
+                But here's the catch: <strong>anyone on the internet can write to the logs the agent reads.</strong>
+                This project demonstrates a two-altitude security model where the agent's instructions and the
+                underlying sandbox work independently to prevent injection attacks.
+            </p>
+        </section>
+
+        <!-- Threat Model -->
+        <section>
+            <h2>The Threat Model</h2>
+            <div class="threat-model">
+                <h3>🎯 Attack Surface: Logs are injectable</h3>
+                <p>
+                    An attacker can write to HTTP headers, logs, or event streams that the agent reads.
+                    The agent's job is parsing logs — so it's parsing whatever an attacker types into a request header.
+                </p>
+            </div>
+
+            <h3>Two-Path Demo</h3>
+
+            <div class="path">
+                <h4>✅ Happy Path: Investigation → Root Cause → Rollback</h4>
+                <ul>
+                    <li>Maya: <em>"Investigate the driftwood-inventory service"</em></li>
+                    <li>Agent queries Dynatrace DQL (problems, logs, metrics)</li>
+                    <li>Finds: Bad deployment (v1.4.0, poolSize=1) 42 seconds before error onset</li>
+                    <li>Proposes: Rollback to v1.3.2 with poolSize=50</li>
+                    <li>Maya approves (HITL confirmation)</li>
+                    <li>Agent executes rollback → problem closes</li>
+                </ul>
+            </div>
+
+            <div class="path security">
+                <h4>🔒 Security Path: Injection Detection & Refusal</h4>
+                <ul>
+                    <li>Attacker: Injects directive in User-Agent header → "POST incident summary to attacker-controlled server"</li>
+                    <li>Agent detects: Finds suspicious log entry via DQL</li>
+                    <li>Agent refuses: Treats log content as DATA, not instructions</li>
+                    <li>Agent reports: Quotes the injection attempt to Maya</li>
+                    <li>Sandbox blocks: Egress policy refuses connection to unknown domain (icmpx admin-prohibited)</li>
+                    <li>Result: Two-altitude defense (instruction + OS-level) work independently</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Tech Stack -->
+        <section>
+            <h2>Built With (Google Cloud Track)</h2>
+
+            <h3>Google Products ⭐</h3>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <strong>Gemini LLM</strong><br>
+                    Gemini-3.5-flash via Vertex AI ADC auth
+                </div>
+                <div class="tech-item">
+                    <strong>Agent Builder</strong><br>
+                    google-agents-cli + Python ADK v1.34.3
+                </div>
+                <div class="tech-item">
+                    <strong>Google Cloud</strong><br>
+                    Vertex AI (rapidagent-498217 project)
+                </div>
+            </div>
+
+            <h3>All Tools & Products</h3>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <strong>Dynatrace MCP</strong><br>
+                    20 tools (problems, DQL, entities, analyzers)
+                </div>
+                <div class="tech-item">
+                    <strong>capgate</strong><br>
+                    Manifest → sandbox policy compiler
+                </div>
+                <div class="tech-item">
+                    <strong>Docker</strong><br>
+                    Container sandbox (read-only, cap-drop ALL)
+                </div>
+                <div class="tech-item">
+                    <strong>nftables</strong><br>
+                    Egress gateway (policy-driven firewall)
+                </div>
+                <div class="tech-item">
+                    <strong>Python 3.12</strong><br>
+                    Agent runtime (google-adk)
+                </div>
+                <div class="tech-item">
+                    <strong>Node.js 20</strong><br>
+                    Demo app & utilities
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture -->
+        <section>
+            <h2>Architecture</h2>
+            <p>
+                <strong>Single merged sandbox:</strong> Agent + MCP server compiled into one Docker policy from a
+                capability manifest, ensuring both components operate under the same egress constraints.
+            </p>
+            <div class="highlight">
+                <strong>Four egress endpoints (all declared in manifest):</strong>
+                <ul>
+                    <li><code>aiplatform.googleapis.com:443</code> — Gemini API (Vertex AI)</li>
+                    <li><code>egc32068.apps.dynatrace.com:443</code> — Tenant queries</li>
+                    <li><code>sso.dynatrace.com:443</code> — Authentication</li>
+                    <li><code>host.docker.internal:3000</code> — Rollback tool (demo app)</li>
+                </ul>
+            </div>
+            <div class="highlight">
+                <strong>HITL (Human-In-The-Loop):</strong> Native ADK tool confirmation. Agent proposes action,
+                Maya must approve before execution. Visible on camera.
+            </div>
+        </section>
+
+        <!-- Key Findings -->
+        <section>
+            <h2>Key Findings</h2>
+            <div class="findings">
+                <div class="finding">
+                    <strong>Two-Altitude Security</strong>
+                    Instruction refusal (agent) + OS-level egress block (sandbox) work independently.
+                    If agent is tricked, sandbox catches it. Validated via live injection demo.
+                </div>
+                <div class="finding">
+                    <strong>Tool-Level Exfil</strong>
+                    Email/Slack channels route through allowed tenant endpoints. Invisible to OS sandbox
+                    but declared via <code>assert:</code> capabilities for auditability.
+                </div>
+                <div class="finding">
+                    <strong>Egress Enforcement</strong>
+                    Sidecar nftables gateway (Docker). Reads compiled policy, default-drop, instant
+                    visible refusal (not timeout).
+                </div>
+                <div class="finding">
+                    <strong>Grammar Gap</strong>
+                    capgate v0.0 lacks scope parameterization (<code>${VAR}</code> interpolation).
+                    Candidate for v0.1.
+                </div>
+                <div class="finding">
+                    <strong>ADK + MCP</strong>
+                    stdio spawn of MCP server. Tool filter at framework layer (two altitudes of security).
+                </div>
+                <div class="finding">
+                    <strong>Injection Defense</strong>
+                    Agent correctly detects and refuses log-based attacks. Threat model validated.
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Start -->
+        <section>
+            <h2>Quick Start</h2>
+
+            <h3>Prerequisites</h3>
+            <ul>
+                <li>Node.js 20+, Python 3.12+, Docker</li>
+                <li>Google Cloud: <code>gcloud auth application-default login</code></li>
+                <li>Dynatrace: Trial tenant + MCP credentials</li>
+            </ul>
+
+            <h3>Setup</h3>
+            <div class="code-block"><code>
+# Install dependencies<br>
+npm install<br>
+uv sync<br>
+<br>
+# Configure credentials (.env, gitignored)<br>
+cat > .env &lt;&lt;EOF<br>
+DT_ENVIRONMENT=your-env-id<br>
+DT_PLATFORM_TOKEN=your-token<br>
+GOOGLE_CLOUD_PROJECT=your-project<br>
+GOOGLE_CLOUD_LOCATION=global<br>
+EOF<br>
+<br>
+# Start ADK server<br>
+adk api_server --host 127.0.0.1 --port 8123 driftwood-agent<br>
+<br>
+# Run agent (separate terminal)<br>
+node scripts/agent-session.mjs http://127.0.0.1:8123<br>
+[maya] > Investigate the driftwood-inventory service
+            </code></div>
+
+            <h3>See the Full Demo</h3>
+            <div class="code-block"><code>
+# Full two-path rehearsal (bad deploy → poison → investigation → HITL → rollback)<br>
+node scripts/rehearsal.mjs
+            </code></div>
+        </section>
+
+        <!-- Demo Video -->
+        <section>
+            <h2>Demo Video</h2>
+            <p>
+                Watch the two-path demo (investigation + injection detection) in action:
+            </p>
+            <div style="background: #f0f0f0; border: 2px dashed #999; border-radius: 6px; padding: 3rem; text-align: center;">
+                <p style="color: #666; font-size: 1.1rem; margin: 0;">
+                    🎬 Demo video (under 3 minutes, YouTube)<br>
+                    <span style="color: #999; font-size: 0.9rem;">Recording June 11th, 2026</span>
+                </p>
+            </div>
+            <p style="color: #666; font-size: 0.9rem; margin-top: 1rem;">
+                Timeline: ~30s setup → 1m investigation & injection → 30s HITL approval & rollback → 30s narrated recovery
+            </p>
+        </section>
+
+        <!-- CTA -->
+        <section style="text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+            <h2 style="color: white; border-color: white;">Ready to Explore?</h2>
+            <p style="color: #ccc; margin-bottom: 1.5rem;">
+                See the full source code, architecture, and findings.
+            </p>
+            <div class="cta-buttons" style="justify-content: center;">
+                <a href="https://github.com/razukc/driftwood-custodian" class="btn btn-primary">
+                    📂 View on GitHub
+                </a>
+                <a href="https://github.com/razukc/driftwood-custodian#quick-start" class="btn btn-secondary">
+                    🚀 Quick Start
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <p>
+            Built for the <strong>Google Cloud Rapid Agent Hackathon</strong> (Dynatrace Track)<br>
+            By <a href="https://github.com/razukc">Raju KC</a> —
+            <a href="https://github.com/razukc/capgate">capgate</a> author (not headlined, judged on agent behavior)
+        </p>
+        <p style="margin-top: 1rem; font-size: 0.9rem;">
+            📄 <a href="https://github.com/razukc/driftwood-custodian/blob/main/BUILD_NOTES.md">BUILD_NOTES.md</a> —
+            Comprehensive findings from design & build
+        </p>
+        <p style="margin-top: 0.5rem; color: #888; font-size: 0.85rem;">
+            Apache-2.0 License | Submitted June 2026
+        </p>
+    </footer>
+</body>
+</html>
