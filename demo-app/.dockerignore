@@ -1,0 +1,7 @@
+# Keep the build context minimal and secret-free.
+node_modules
+.env
+.env.example
+scripts
+test
+TENANT_SETUP.md
