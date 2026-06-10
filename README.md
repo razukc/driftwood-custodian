@@ -36,6 +36,8 @@ request header. This submission demos both paths:
 
 ## Try it live
 
+- **▶ Watch the demo (3 min):** https://youtu.be/8RL2vZ09uUY
+
 The agent and demo service are hosted on Google Cloud Run:
 
 - **Agent (dev UI):** https://driftwood-agent-1035154342517.us-east1.run.app/dev-ui/?app=app
