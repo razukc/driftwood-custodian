@@ -28,17 +28,26 @@ request header. This submission demos both paths:
 
 | Path | What |
 |---|---|
-| `agent/` | The investigation agent (two-path prompting, human-in-the-loop on remediation, OTel self-instrumentation) |
+| `driftwood-agent/` | The investigation agent (two-path prompting, human-in-the-loop on remediation, OTel self-instrumentation — its own spans export to the Dynatrace tenant it investigates) |
 | `demo-app/` | Driftwood's demo service — emits logs to Dynatrace, with an injectable request path for the poisoned-log line |
 | `policy/` | The capability manifest and the sandbox policies compiled from it (Docker + bubblewrap) |
-| `scripts/` | Verification utilities (MCP handshake / tool-inventory check) |
+| `scripts/` | Verification utilities (MCP handshake / tool-inventory check) and `deploy.sh` (reproducible Cloud Run deploy) |
 | `BUILD_NOTES.md` | Findings recorded during the build |
+
+## Try it live
+
+The agent and demo service are hosted on Google Cloud Run:
+
+- **Agent (dev UI):** https://driftwood-agent-1035154342517.us-east1.run.app/dev-ui/?app=app
+- **Landing page:** https://razukc.github.io/driftwood-custodian/
+
+Ask the agent: `Investigate the driftwood-inventory service`.
 
 ## Quick Start (for judges)
 
 ### Prerequisites
 
-- Node.js 20+, Python 3.12+, Docker
+- Node.js 22+ (the Dynatrace MCP server's bundled undici requires Node ≥22), Python 3.12+, Docker
 - Google Cloud: Vertex AI ADC auth (`gcloud auth application-default login`)
 - Dynatrace: Trial tenant + MCP server credentials
 
@@ -46,8 +55,8 @@ request header. This submission demos both paths:
 
 ```bash
 # Install dependencies
-npm install
-uv sync  # or: python -m venv .venv && source .venv/bin/activate && pip install -r driftwood-agent/requirements.txt
+npm install                          # MCP server + demo app
+uv sync --project driftwood-agent    # Python agent (uv.lock is the source of truth)
 
 # Configure credentials (gitignored .env file)
 cat > .env <<EOF
@@ -82,6 +91,19 @@ node scripts/rehearsal.mjs
 - **Sandbox:** Docker container, policies compiled from `policy/manifest.json` via [capgate](https://github.com/razukc/capgate)
 - **HITL:** Native ADK `require_confirmation=True` on rollback tool
 - **Egress enforcement:** Sidecar nftables gateway (reads `policy.docker.json`, default-drop + allowlist, instant `icmpx admin-prohibited` refusal)
+- **Self-observability:** the agent exports its own OTLP spans (`invoke_agent`, `call_llm`, MCP tool calls) to the same Dynatrace tenant it investigates — a second `BatchSpanProcessor` bolted onto ADK's Cloud Trace provider, so it's observable as `service.name=driftwood-agent` in Grail
+
+### Deploy
+
+Both services run on Cloud Run. Several runtime settings the demo depends on (demo-app
+`--concurrency 250`, the agent's trace env vars and `OTEL_SERVICE_NAME`) live only as
+deploy flags, not in any Dockerfile — `scripts/deploy.sh` pins them so a redeploy doesn't
+silently regress:
+
+```bash
+scripts/deploy.sh both     # demo app, then rebuild + deploy the agent
+scripts/deploy.sh agent    # agent only   (demo|agent|both, optional --no-build)
+```
 
 ## Key findings (BUILD_NOTES)
 
