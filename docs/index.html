@@ -283,6 +283,12 @@
                 This project demonstrates a two-altitude security model where the agent's instructions and the
                 underlying sandbox work independently to prevent injection attacks.
             </p>
+            <div class="highlight" style="margin-top: 1.5rem;">
+                <strong>▶ Try it live:</strong> the agent is deployed on Google Cloud Run.
+                Open <a href="https://driftwood-agent-1035154342517.us-east1.run.app/dev-ui/?app=app">the live agent UI</a>
+                and ask it to <em>"Investigate the driftwood-inventory service."</em> It queries the Dynatrace
+                tenant through the MCP server and reports the active incident.
+            </div>
         </section>
 
         <!-- Threat Model -->
@@ -366,8 +372,8 @@
                     Agent runtime (google-adk)
                 </div>
                 <div class="tech-item">
-                    <strong>Node.js 20</strong><br>
-                    Demo app & utilities
+                    <strong>Node.js 22</strong><br>
+                    Demo app, MCP server runtime
                 </div>
             </div>
         </section>
@@ -493,11 +499,11 @@ node scripts/rehearsal.mjs
                 See the full source code, architecture, and findings.
             </p>
             <div class="cta-buttons" style="justify-content: center;">
-                <a href="https://github.com/razukc/driftwood-custodian" class="btn btn-primary">
-                    📂 View on GitHub
+                <a href="https://driftwood-agent-1035154342517.us-east1.run.app/dev-ui/?app=app" class="btn btn-primary">
+                    🤖 Open the Live Agent
                 </a>
-                <a href="https://github.com/razukc/driftwood-custodian#quick-start" class="btn btn-secondary">
-                    🚀 Quick Start
+                <a href="https://github.com/razukc/driftwood-custodian" class="btn btn-secondary">
+                    📂 View on GitHub
                 </a>
             </div>
         </section>
